@@ -4,3 +4,4 @@ __pycache__/
 .coverage*
 pytest-cache-files-*/
 data/index.json
+data/test-*.json
