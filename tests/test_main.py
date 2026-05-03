@@ -63,6 +63,14 @@ def test_handle_command_handles_empty_input() -> None:
     assert should_exit is False
 
 
+def test_handle_command_handles_usage_errors() -> None:
+    _, build_message, _ = handle_command("build now", {})
+    _, load_message, _ = handle_command("load now", {})
+
+    assert build_message == "Usage: build"
+    assert load_message == "Usage: load"
+
+
 def test_handle_command_load_reads_saved_index() -> None:
     index_path = Path("data") / f"test-load-{uuid4().hex}.json"
     fake_index = {
@@ -142,3 +150,21 @@ def test_run_shell_prints_help_and_exits(monkeypatch) -> None:
     assert printed_lines[0] == HELP_TEXT
     assert HELP_TEXT in printed_lines[1]
     assert printed_lines[-1] == "Exiting search tool."
+
+
+def test_run_shell_handles_eof(monkeypatch) -> None:
+    def raise_eof(prompt: str) -> str:
+        raise EOFError
+
+    printed_lines = []
+
+    monkeypatch.setattr("builtins.input", raise_eof)
+    monkeypatch.setattr(
+        "builtins.print",
+        lambda *args, **kwargs: printed_lines.append(" ".join(str(arg) for arg in args)),
+    )
+
+    run_shell()
+
+    assert printed_lines[0] == HELP_TEXT
+    assert printed_lines[-1] == "\nExiting search tool."
