@@ -9,6 +9,34 @@ from src.indexer import save_index
 from src.main import HELP_TEXT, handle_command, run_shell
 
 
+def test_handle_command_build_updates_index_and_reports_success(monkeypatch) -> None:
+    index_path = Path("data") / f"test-build-{uuid4().hex}.json"
+    fake_index = {
+        "life": {
+            "https://quotes.toscrape.com/": {
+                "frequency": 1,
+                "positions": [0],
+            }
+        }
+    }
+
+    monkeypatch.setattr("src.main.crawl_site", lambda start_url: fake_index)
+
+    try:
+        updated_index, message, should_exit = handle_command("build", None, index_path)
+
+        assert updated_index == fake_index
+        assert "Build complete." in message
+        assert index_path.exists()
+        assert should_exit is False
+    finally:
+        if index_path.exists():
+            try:
+                index_path.unlink()
+            except PermissionError:
+                pass
+
+
 def test_handle_command_returns_help_and_exit() -> None:
     index = {}
 

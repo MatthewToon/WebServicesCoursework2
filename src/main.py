@@ -5,13 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 
 if __package__:
-    from .indexer import Index, load_index
+    from .crawler import BASE_URL, crawl_site
+    from .indexer import Index, load_index, save_index
     from .search import format_search_results, print_word, search_index
 else:  # pragma: no cover - supports direct execution
     import sys
 
     sys.path.append(str(Path(__file__).resolve().parent))
-    from indexer import Index, load_index
+    from crawler import BASE_URL, crawl_site
+    from indexer import Index, load_index, save_index
     from search import format_search_results, print_word, search_index
 
 HELP_TEXT = "\n".join(
@@ -28,6 +30,22 @@ HELP_TEXT = "\n".join(
 )
 
 DEFAULT_INDEX_PATH = Path(__file__).resolve().parent.parent / "data" / "index.json"
+
+
+def build_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[Index, str]:
+    """Build the index by crawling the target site."""
+    index = crawl_site(start_url=BASE_URL)
+    save_index(index, index_path)
+
+    message = "\n".join(
+        [
+            "Build complete.",
+            f"Indexed {len(index)} unique words.",
+            f"Saved index to {Path(index_path)}",
+        ]
+    )
+
+    return index, message
 
 
 def load_existing_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[Index, str]:
@@ -61,7 +79,8 @@ def handle_command(
         if argument:
             return index, "Usage: build", False
 
-        return index, "Build is not implemented yet.", False
+        new_index, message = build_index(index_path)
+        return new_index, message, False
 
     if action == "load":
         if argument:

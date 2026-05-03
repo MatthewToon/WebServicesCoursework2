@@ -11,3 +11,12 @@ python -m src.main
 ```
 
 At this stage of development, `load`, `print <word>`, and `find <query terms>` are wired into the shell. The `build` command is added later with the crawler.
+
+The final tool supports:
+
+- `build`
+- `load`
+- `print <word>`
+- `find <query terms>`
+- `help`
+- `exit`
