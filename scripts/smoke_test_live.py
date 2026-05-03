@@ -6,7 +6,12 @@ It fetches the real homepage, extracts visible text, and counts internal links.
 
 from __future__ import annotations
 
+from pathlib import Path
+import sys
+
 import requests
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from src.crawler import BASE_URL, DEFAULT_HEADERS, extract_internal_links, extract_page_text
 
