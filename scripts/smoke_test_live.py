@@ -4,13 +4,12 @@ This is a manual verification helper, not part of the automated pytest suite.
 It fetches the real homepage, extracts visible text, and counts internal links.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 import sys
 
 import requests
 
+# Add the repository root so the script can import the src package.
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from src.crawler import BASE_URL, DEFAULT_HEADERS, extract_internal_links, extract_page_text
@@ -18,6 +17,7 @@ from src.crawler import BASE_URL, DEFAULT_HEADERS, extract_internal_links, extra
 
 def main() -> None:
     """Run a minimal live check against the real target website."""
+    # This script uses the same request headers and parsing helpers as the main app.
     response = requests.get(BASE_URL, headers=DEFAULT_HEADERS, timeout=10)
     response.raise_for_status()
 

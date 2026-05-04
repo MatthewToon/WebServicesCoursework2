@@ -1,7 +1,5 @@
 """CLI tests."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from uuid import uuid4
 
@@ -20,7 +18,11 @@ def test_handle_command_build_updates_index_and_reports_success(monkeypatch) -> 
         }
     }
 
-    monkeypatch.setattr("src.main.crawl_site", lambda start_url: fake_index)
+    # Replace the real crawler so this test does not wait for live requests.
+    def fake_crawl_site(start_url: str) -> dict:
+        return fake_index
+
+    monkeypatch.setattr("src.main.crawl_site", fake_crawl_site)
 
     try:
         updated_index, message, should_exit = handle_command("build", None, index_path)
@@ -84,6 +86,7 @@ def test_handle_command_load_reads_saved_index() -> None:
     try:
         save_index(fake_index, index_path)
 
+        # Loading should return the same structure that was written to disk.
         updated_index, message, should_exit = handle_command("load", None, index_path)
 
         assert updated_index == fake_index
@@ -139,11 +142,15 @@ def test_run_shell_prints_help_and_exits(monkeypatch) -> None:
     commands = iter(["help", "exit"])
     printed_lines = []
 
-    monkeypatch.setattr("builtins.input", lambda prompt: next(commands))
-    monkeypatch.setattr(
-        "builtins.print",
-        lambda *args, **kwargs: printed_lines.append(" ".join(str(arg) for arg in args)),
-    )
+    # Fake input/output lets the shell be tested without manual typing.
+    def fake_input(prompt: str) -> str:
+        return next(commands)
+
+    def fake_print(*args, **kwargs) -> None:
+        printed_lines.append(" ".join(str(arg) for arg in args))
+
+    monkeypatch.setattr("builtins.input", fake_input)
+    monkeypatch.setattr("builtins.print", fake_print)
 
     run_shell()
 
@@ -158,11 +165,11 @@ def test_run_shell_handles_eof(monkeypatch) -> None:
 
     printed_lines = []
 
+    def fake_print(*args, **kwargs) -> None:
+        printed_lines.append(" ".join(str(arg) for arg in args))
+
     monkeypatch.setattr("builtins.input", raise_eof)
-    monkeypatch.setattr(
-        "builtins.print",
-        lambda *args, **kwargs: printed_lines.append(" ".join(str(arg) for arg in args)),
-    )
+    monkeypatch.setattr("builtins.print", fake_print)
 
     run_shell()
 

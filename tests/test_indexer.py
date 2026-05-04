@@ -1,7 +1,5 @@
 """Tests for text tokenisation and inverted index construction."""
 
-from __future__ import annotations
-
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -10,6 +8,7 @@ from src.indexer import add_page_to_index, load_index, save_index, tokenize
 
 
 def test_tokenize_lowercases_and_splits_punctuation() -> None:
+    # This mirrors the simple tokenisation rules used in the coursework.
     assert tokenize("Good, GOOD! Friends-and-family.") == [
         "good",
         "good",
@@ -22,6 +21,7 @@ def test_tokenize_lowercases_and_splits_punctuation() -> None:
 def test_add_page_to_index_tracks_frequency_and_positions() -> None:
     index = {}
 
+    # The same word should build up both a frequency and a position list.
     add_page_to_index(index, "https://quotes.toscrape.com/", "Good good life!")
 
     assert index["good"]["https://quotes.toscrape.com/"]["frequency"] == 2
@@ -52,6 +52,7 @@ def test_save_and_load_index_round_trip() -> None:
     file_path = Path("data") / f"test-index-{uuid4().hex}.json"
 
     try:
+        # Save/load should preserve the exact nested dictionary structure.
         add_page_to_index(index, "https://quotes.toscrape.com/", "Life is good")
         save_index(index, file_path)
 
@@ -67,6 +68,7 @@ def test_save_and_load_index_round_trip() -> None:
 
 
 def test_add_page_to_index_handles_large_repeated_input_quickly() -> None:
+    # This is a lightweight performance-style check from the plan.
     text = "word " * 20000
     index = {}
     started_at = time.perf_counter()

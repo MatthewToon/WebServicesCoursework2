@@ -1,21 +1,12 @@
 """Breadth-first crawler helpers for quotes.toscrape.com."""
 
-from __future__ import annotations
-
 import time
 from urllib.parse import urldefrag, urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
 
-if __package__:
-    from .indexer import Index, add_page_to_index
-else:  # pragma: no cover - supports direct execution
-    from pathlib import Path
-    import sys
-
-    sys.path.append(str(Path(__file__).resolve().parent))
-    from indexer import Index, add_page_to_index
+from .indexer import add_page_to_index
 
 BASE_URL = "https://quotes.toscrape.com/"
 DEFAULT_HEADERS = {
@@ -27,9 +18,11 @@ def extract_page_text(html: str) -> str:
     """Extract the visible text from an HTML page."""
     soup = BeautifulSoup(html, "html.parser")
 
+    # These tags do not contribute useful search text.
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
 
+    # Fall back to the whole document if no body tag exists.
     container = soup.body or soup
     return container.get_text(" ", strip=True)
 
@@ -46,7 +39,10 @@ def extract_internal_links(
     seen_links: set[str] = set()
 
     for anchor in soup.find_all("a", href=True):
+        # Convert relative links such as /page/2/ into full URLs.
         full_url = urljoin(current_url, anchor["href"])
+
+        # Remove page fragments so /page/2/#top and /page/2/ are treated the same.
         full_url = urldefrag(full_url)[0]
         parsed_url = urlparse(full_url)
 
@@ -69,10 +65,14 @@ def crawl_site(
     start_url: str = BASE_URL,
     politeness_delay: int = 6,
     headers: dict[str, str] | None = None,
-) -> Index:
+) -> dict:
     """Crawl the target site and build an inverted index."""
-    index: Index = {}
+    index = {}
+
+    # A plain list keeps the crawl order breadth-first and easy to explain.
     queue = [start_url]
+
+    # This set prevents duplicates being added while a URL is still waiting.
     queued_urls = {start_url}
     visited_urls: set[str] = set()
     request_count = 0
@@ -88,6 +88,7 @@ def crawl_site(
         visited_urls.add(current_url)
         print(f"Crawling: {current_url}")
 
+        # The brief requires at least 6 seconds between successive requests.
         if request_count > 0:
             time.sleep(politeness_delay)
 
@@ -107,6 +108,7 @@ def crawl_site(
         text = extract_page_text(html)
         add_page_to_index(index, current_url, text)
 
+        # Only unseen internal links are added back into the BFS queue.
         for link in extract_internal_links(html, current_url, start_url):
             if link in visited_urls or link in queued_urls:
                 continue
