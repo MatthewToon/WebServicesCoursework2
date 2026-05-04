@@ -1,7 +1,5 @@
 """Tests for crawler behaviour and link extraction."""
 
-from __future__ import annotations
-
 from unittest.mock import patch
 
 import requests
@@ -10,6 +8,7 @@ from src.crawler import crawl_site, extract_internal_links, extract_page_text
 
 
 def test_extract_page_text_removes_script_content() -> None:
+    # The search tool should ignore non-visible script text.
     html = """
     <html>
       <body>
@@ -28,6 +27,7 @@ def test_extract_page_text_removes_script_content() -> None:
 
 
 def test_extract_internal_links_normalizes_filters_and_deduplicates() -> None:
+    # This covers relative links, fragments, external links, and duplicates.
     html = """
     <html>
       <body>
@@ -55,6 +55,7 @@ class FakeResponse:
 @patch("src.crawler.time.sleep")
 @patch("src.crawler.requests.get")
 def test_crawl_site_builds_index_across_multiple_pages(mock_get, mock_sleep) -> None:
+    # The fake pages let us test crawling logic without hitting the live site.
     page_one = """
     <html>
       <body>
@@ -83,6 +84,7 @@ def test_crawl_site_builds_index_across_multiple_pages(mock_get, mock_sleep) -> 
 
     mock_get.side_effect = fake_get
 
+    # Mocked sleep keeps the test fast while still checking the politeness call.
     index = crawl_site(politeness_delay=6)
 
     assert index["life"]["https://quotes.toscrape.com/"]["frequency"] == 1
@@ -95,6 +97,7 @@ def test_crawl_site_builds_index_across_multiple_pages(mock_get, mock_sleep) -> 
 
 @patch("src.crawler.requests.get")
 def test_crawl_site_handles_failed_requests(mock_get) -> None:
+    # Network errors should not crash the crawl.
     mock_get.side_effect = requests.RequestException("boom")
 
     index = crawl_site()
@@ -104,6 +107,7 @@ def test_crawl_site_handles_failed_requests(mock_get) -> None:
 
 @patch("src.crawler.requests.get")
 def test_crawl_site_skips_non_200_responses(mock_get) -> None:
+    # Non-200 pages should be ignored rather than indexed.
     mock_get.return_value = FakeResponse("<html></html>", status_code=404)
 
     index = crawl_site()

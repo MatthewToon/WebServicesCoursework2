@@ -1,21 +1,12 @@
 """Main shell entry point for the COMP3011 search tool."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
-if __package__:
-    from .crawler import BASE_URL, crawl_site
-    from .indexer import Index, load_index, save_index
-    from .search import format_search_results, print_word, search_index
-else:  # pragma: no cover - supports direct execution
-    import sys
+from .crawler import BASE_URL, crawl_site
+from .indexer import load_index, save_index
+from .search import format_search_results, print_word, search_index
 
-    sys.path.append(str(Path(__file__).resolve().parent))
-    from crawler import BASE_URL, crawl_site
-    from indexer import Index, load_index, save_index
-    from search import format_search_results, print_word, search_index
-
+# Keep the help text visible in one place so the shell and tests match.
 HELP_TEXT = "\n".join(
     [
         "Search Tool",
@@ -29,12 +20,15 @@ HELP_TEXT = "\n".join(
     ]
 )
 
+# The saved index lives in the data folder at the repository root.
 DEFAULT_INDEX_PATH = Path(__file__).resolve().parent.parent / "data" / "index.json"
 
 
-def build_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[Index, str]:
+def build_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[dict, str]:
     """Build the index by crawling the target site."""
     index = crawl_site(start_url=BASE_URL)
+
+    # Save immediately so a later `load` command can reuse the crawl.
     save_index(index, index_path)
 
     message = "\n".join(
@@ -48,7 +42,7 @@ def build_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[Index, str
     return index, message
 
 
-def load_existing_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[Index, str]:
+def load_existing_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[dict, str]:
     """Load the saved index from disk."""
     index = load_index(index_path)
     message = "\n".join(
@@ -62,15 +56,16 @@ def load_existing_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[In
 
 def handle_command(
     command: str,
-    index: Index | None,
+    index: dict | None,
     index_path: str | Path = DEFAULT_INDEX_PATH,
-) -> tuple[Index | None, str, bool]:
+) -> tuple[dict | None, str, bool]:
     """Handle shell commands."""
     cleaned_command = command.strip()
 
     if not cleaned_command:
         return index, "Please enter a command.", False
 
+    # Split once so the rest of the line stays intact for multi-word queries.
     parts = cleaned_command.split(maxsplit=1)
     action = parts[0].lower()
     argument = parts[1] if len(parts) > 1 else ""
@@ -117,7 +112,8 @@ def handle_command(
 
 def run_shell(index_path: str | Path = DEFAULT_INDEX_PATH) -> None:
     """Run the interactive shell."""
-    index: Index | None = None
+    # The shell keeps the currently loaded index in memory between commands.
+    index = None
     print(HELP_TEXT)
 
     while True:

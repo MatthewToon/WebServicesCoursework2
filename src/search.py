@@ -1,20 +1,9 @@
 """Search and display helpers for the inverted index."""
 
-from __future__ import annotations
-
-if __package__:
-    from .indexer import Index, tokenize
-else:  # pragma: no cover - supports direct execution
-    from pathlib import Path
-    import sys
-
-    sys.path.append(str(Path(__file__).resolve().parent))
-    from indexer import Index, tokenize
-
-SearchResult = dict[str, object]
+from .indexer import tokenize
 
 
-def print_word(index: Index, word: str) -> str:
+def print_word(index: dict, word: str) -> str:
     """Return a readable view of the postings for one word."""
     words = tokenize(word)
 
@@ -46,7 +35,14 @@ def print_word(index: Index, word: str) -> str:
     return "\n".join(lines).rstrip()
 
 
-def search_index(index: Index, query: str) -> tuple[list[str], list[SearchResult]]:
+def build_result_sort_key(result: dict) -> tuple[int, str]:
+    """Sort higher scores first, then sort URLs alphabetically."""
+    score = int(result["score"])
+    url = str(result["url"])
+    return (-score, url)
+
+
+def search_index(index: dict, query: str) -> tuple[list[str], list[dict]]:
     """Run a conjunctive multi-word search against the index."""
     query_words = tokenize(query)
 
@@ -55,6 +51,8 @@ def search_index(index: Index, query: str) -> tuple[list[str], list[SearchResult
 
     matching_urls: set[str] | None = None
 
+    # This is a conjunctive search:
+    # a page must contain every query word to be returned.
     for word in query_words:
         if word not in index:
             return query_words, []
@@ -66,13 +64,16 @@ def search_index(index: Index, query: str) -> tuple[list[str], list[SearchResult
         else:
             matching_urls = matching_urls.intersection(urls_for_word)
 
-    results: list[SearchResult] = []
+    if matching_urls is None:
+        return query_words, []
 
-    for url in matching_urls or set():
+    results: list[dict] = []
+
+    for url in matching_urls:
         score = 0
 
         for word in query_words:
-            score = score + int(index[word][url]["frequency"])
+            score = score + index[word][url]["frequency"]
 
         results.append(
             {
@@ -81,12 +82,12 @@ def search_index(index: Index, query: str) -> tuple[list[str], list[SearchResult
             }
         )
 
-    results.sort(key=lambda result: (-int(result["score"]), str(result["url"])))
+    results.sort(key=build_result_sort_key)
 
     return query_words, results
 
 
-def format_search_results(query_words: list[str], results: list[SearchResult]) -> str:
+def format_search_results(query_words: list[str], results: list[dict]) -> str:
     """Return a readable view of search results."""
     if not query_words:
         return "Please enter a search term."

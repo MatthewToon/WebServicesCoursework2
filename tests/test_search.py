@@ -1,12 +1,11 @@
 """Tests for print and find functionality."""
 
-from __future__ import annotations
-
 from src.indexer import add_page_to_index
 from src.search import format_search_results, print_word, search_index
 
 
 def build_sample_index() -> dict:
+    # Build a small in-memory index so search behaviour is predictable in tests.
     index = {}
     add_page_to_index(index, "https://quotes.toscrape.com/", "Life is good and good friends matter")
     add_page_to_index(index, "https://quotes.toscrape.com/page/2/", "Good friends share good stories")
@@ -64,6 +63,7 @@ def test_search_index_returns_single_word_results_sorted_by_frequency() -> None:
 def test_search_index_requires_all_words_in_query() -> None:
     index = build_sample_index()
 
+    # Multi-word search is conjunctive: every word must be present.
     query_words, results = search_index(index, "good friends")
 
     assert query_words == ["good", "friends"]
