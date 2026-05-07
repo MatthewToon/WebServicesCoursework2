@@ -29,6 +29,7 @@ def test_handle_command_build_updates_index_and_reports_success(monkeypatch) -> 
 
         assert updated_index == fake_index
         assert "Build complete." in message
+        assert "Crawled 1 page(s)." in message
         assert index_path.exists()
         assert should_exit is False
     finally:

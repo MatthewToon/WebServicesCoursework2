@@ -24,9 +24,21 @@ HELP_TEXT = "\n".join(
 DEFAULT_INDEX_PATH = Path(__file__).resolve().parent.parent / "data" / "index.json"
 
 
+def count_indexed_pages(index: dict) -> int:
+    """Count how many unique page URLs appear anywhere in the index."""
+    page_urls: set[str] = set()
+
+    for word_entries in index.values():
+        for url in word_entries:
+            page_urls.add(url)
+
+    return len(page_urls)
+
+
 def build_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[dict, str]:
     """Build the index by crawling the target site."""
     index = crawl_site(start_url=BASE_URL)
+    page_count = count_indexed_pages(index)
 
     # Save immediately so a later `load` command can reuse the crawl.
     save_index(index, index_path)
@@ -34,6 +46,7 @@ def build_index(index_path: str | Path = DEFAULT_INDEX_PATH) -> tuple[dict, str]
     message = "\n".join(
         [
             "Build complete.",
+            f"Crawled {page_count} page(s).",
             f"Indexed {len(index)} unique words.",
             f"Saved index to {Path(index_path)}",
         ]
