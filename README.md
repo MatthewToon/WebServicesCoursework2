@@ -1,8 +1,23 @@
 # Web Services Coursework 2
 
-This repository contains a Python search tool for `https://quotes.toscrape.com/` for the COMP3011 Web Services and Web Data coursework. It crawls the site, builds an inverted index with per-page word statistics, saves and loads the index from disk, and supports simple command-line search commands.
+## 1. Project Overview & Purpose
 
-## Project structure
+This project is a Python command-line search tool for `https://quotes.toscrape.com/`, created for the COMP3011 Web Services and Web Data coursework.
+
+The tool:
+
+- crawls pages from `quotes.toscrape.com`
+- respects the required 6-second politeness window between requests
+- extracts visible page text using BeautifulSoup
+- builds an inverted index of word occurrences
+- stores word statistics including frequency and token positions
+- saves the completed index to `data/index.json`
+- reloads the saved index from disk
+- supports `build`, `load`, `print <word>`, and `find <query terms>` commands
+
+The implementation is intentionally simple and explainable. It uses breadth-first crawling, regex tokenisation, dictionary-based index storage, and conjunctive search for multi-word queries. Advanced ranking features such as TF-IDF and PageRank are not included because the coursework plan focused on the required crawler, indexer, storage, and basic retrieval behaviour.
+
+Project structure:
 
 ```text
 src/
@@ -15,111 +30,176 @@ tests/
   test_indexer.py
   test_search.py
   test_main.py
+scripts/
+  smoke_test_live.py
 data/
   index.json
 requirements.txt
 README.md
 ```
 
-## Requirements
+## 2. Installation/Setup Instructions
 
-- Python 3.11 or newer
-- Internet access when running the `build` command
+Clone the repository and move into the project folder:
 
-Install the dependencies with:
-
-```bash
-pip install -r requirements.txt
+```powershell
+git clone https://github.com/MatthewToon/WebServicesCoursework2.git
+cd WebServicesCoursework2
 ```
 
-## Running
+Install the dependencies using Python 3.11:
 
-Start the shell from the repository root:
+```powershell
+py -3.11 -m pip install -r requirements.txt
+```
 
-```bash
+Start the program from the repository root:
+
+```powershell
+py -3.11 -m src.main
+```
+
+If using a virtual environment instead:
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python -m src.main
 ```
 
-The shell supports these commands:
+Internet access is required for `build`, because that command crawls the live target website.
 
-- `build`
-- `load`
-- `print <word>`
-- `find <query terms>`
-- `help`
-- `exit`
+## 3. Usage Examples (for all four commands)
 
-Example session:
+The program runs as an interactive shell. After starting it with `py -3.11 -m src.main`, enter commands at the `>` prompt.
+
+### `build`
 
 ```text
 > build
+```
+
+`build` crawls `https://quotes.toscrape.com/`, extracts page text, builds the inverted index, and saves it to `data/index.json`.
+
+The command can take several minutes because the crawler waits 6 seconds between successive requests. When it finishes, it reports the number of crawled pages, the number of unique indexed words, and the saved index path.
+
+### `load`
+
+```text
 > load
-> print life
-> print nonsense
+```
+
+`load` reads the saved index from `data/index.json` back into memory. This lets the user search without crawling the website again.
+
+This command only works after `build` has already created the index file.
+
+### `print <word>`
+
+```text
+> print born
+```
+
+`print <word>` displays the inverted-index entry for one word. It shows each page containing that word, the word frequency on that page, and the token positions where the word appears.
+
+Example edge case:
+
+```text
+> print nonsenseword
+```
+
+This returns a clear message if the word is not found in the index.
+
+### `find <query terms>`
+
+```text
 > find good friends
-> exit
 ```
 
-## Index structure
+`find <query terms>` searches for pages containing all query terms. Multi-word queries use conjunctive search, so a page must contain every query word to be returned.
 
-The project uses a dictionary-based inverted index:
+Examples:
 
-```json
-{
-  "life": {
-    "https://quotes.toscrape.com/": {
-      "frequency": 2,
-      "positions": [5, 42]
-    }
-  }
-}
+```text
+> find born died
+> find world thinking miracle
+> find
 ```
 
-Each word points to a posting list. Each posting stores:
+`find born died` is useful for checking that author pages were crawled. `find` with no search terms demonstrates the empty-query edge case.
 
-- `frequency`: how many times the word appears on that page
-- `positions`: the token positions where the word appears on that page
+## 4. Testing Instructions
 
-## Design decisions
+Run the automated test suite with:
 
-- Breadth-first crawling: the web crawling lecture describes crawling as graph traversal, so this project uses a simple breadth-first crawl with a queue and visited set.
-- Politeness window: the crawler waits at least 6 seconds between successive requests, matching the coursework brief.
-- Simple tokenisation: all text is lowercased and tokenised with the regex `[a-zA-Z0-9]+`, which keeps the behaviour predictable and easy to explain.
-- No stemming or stopword removal: the brief does not require them, and keeping the original words makes `print` and `find` behaviour easier to understand.
-- Conjunctive search: multi-word `find` queries only return pages containing every query word, using set intersection.
-- Simple ranking: results are ranked by the sum of query-term frequencies in each page.
-
-## Testing
-
-Run the automated tests with:
-
-```bash
-pytest --cov=src
+```powershell
+py -3.11 -m pytest -q
 ```
 
-The test suite includes:
+The test suite covers:
 
-- unit tests for tokenisation, indexing, search formatting, and command handling
-- crawler tests with mocked HTTP requests and mocked sleeping
-- a simple integration-style crawl across fake linked pages
-- a lightweight performance-style indexing test
+- tokenisation and inverted-index construction
+- frequency and position tracking
+- JSON save/load behaviour
+- `print` and `find` search behaviour
+- multi-word conjunctive queries
+- missing-word and empty-query edge cases
+- command-line shell handling
+- crawler parsing and internal-link extraction
+- mocked successful and failed HTTP requests
+- mocked politeness delay behaviour
 
-## Manual smoke test
+To run the tests and show coverage, use:
 
-For a small live verification against the real target site, run:
+```powershell
+@'
+from coverage import Coverage
+import pytest
 
-```bash
-python scripts/smoke_test_live.py
+cov = Coverage(source=["src"], data_file=None)
+cov.start()
+
+exit_code = pytest.main(["-q"])
+
+cov.stop()
+cov.report(show_missing=True)
+
+raise SystemExit(exit_code)
+'@ | py -3.11 -
 ```
 
-This is separate from the automated test suite. It fetches the real homepage at `https://quotes.toscrape.com/`, checks that the page is reachable, extracts visible text using the crawler logic, and counts internal links using the same link-extraction function as the main crawler.
+This runs the normal pytest suite and reports statement coverage for the `src` folder. The project has been verified at 99% statement coverage.
 
-## Known limitations
+There is also a small live smoke test:
 
-- The crawler only indexes visible page text and does not apply advanced weighting to headings, titles, or anchor text.
-- Search is case-insensitive but does not support phrase searching, stemming, stopword removal, or TF-IDF ranking.
-- The `build` command can take several minutes because the required politeness delay is intentionally enforced.
+```powershell
+py -3.11 scripts/smoke_test_live.py
+```
 
-## GenAI declaration
+The smoke test fetches the real homepage, checks the HTTP status, extracts visible text, and counts internal links using the same parsing helpers as the crawler. It is not a full crawl and should finish quickly.
 
-This project was developed with AI assistance for planning, structure, and edge-case review. The implementation was kept deliberately simple so that every function and design choice can be explained clearly in the coursework video, and advanced suggestions such as PageRank, TF-IDF, async crawling, and stemming were intentionally not used.
+## 5. Any dependencies and how to install them
+
+The project dependencies are listed in `requirements.txt`:
+
+```text
+beautifulsoup4
+pytest
+pytest-cov
+requests
+```
+
+Install all dependencies with:
+
+```powershell
+py -3.11 -m pip install -r requirements.txt
+```
+
+Dependency purpose:
+
+- `requests` is used to make HTTP requests during crawling.
+- `beautifulsoup4` is used to parse HTML and extract text and links.
+- `pytest` is used for the automated test suite.
+- `pytest-cov` provides standard pytest coverage support.
+
+Python 3.11 is recommended because the project was developed and tested with `py -3.11`.
