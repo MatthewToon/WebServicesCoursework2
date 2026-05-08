@@ -1,0 +1,7 @@
+__pycache__/
+.pytest_cache/
+.pytest_tmp/
+.coverage*
+pytest-cache-files-*/
+data/index.json
+data/test-*.json
